@@ -1,0 +1,10 @@
+name=roo_time_ds3231
+version=1.0.0
+author=Dejwk <dejwk.oss@gmail.com>
+maintainer=Dejwk <dejwk.oss@gmail.com>
+sentence=Arduino driver for DS3231 real-time clock, compliant with roo_time.
+category=Timing
+url=https://github.com/dejwk/roo_time_ds3231
+architectures=*
+depends=roo_time
+includes=roo_time_ds3231.h
