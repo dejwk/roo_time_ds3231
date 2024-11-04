@@ -1,1 +1,1 @@
-See [roo_time](github.com/dejwk/roo_time).
+See [roo_time](http://github.com/dejwk/roo_time).
