@@ -43,7 +43,7 @@ WallTime Ds3231Clock::now() const {
   wire_.beginTransmission(kDs3231Addr);
   wire_.write(kRegTime);
   wire_.endTransmission();
-  wire_.requestFrom(kDs3231Addr, 7);
+  wire_.requestFrom((uint8_t)kDs3231Addr, (uint8_t)7);
 
   uint8_t second = Bcd2dec(wire_.read());
   uint8_t minute = Bcd2dec(wire_.read());
