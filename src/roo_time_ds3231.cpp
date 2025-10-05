@@ -19,21 +19,19 @@ uint8_t Bcd2dec(uint8_t v) { return ((v / 16) * 10) + (v % 16); }
 
 }  // namespace
 
-Ds3231Clock::Ds3231Clock(TimeZone tz, Interval max_uptime_trusted)
+Ds3231Clock::Ds3231Clock(TimeZone tz, Duration max_uptime_trusted)
     : Ds3231Clock(Wire, tz, max_uptime_trusted) {}
 
 Ds3231Clock::Ds3231Clock(TwoWire& wire, TimeZone tz,
-                         Interval max_uptime_trusted)
+                         Duration max_uptime_trusted)
     : wire_(wire),
       tz_(tz),
       max_uptime_trusted_(max_uptime_trusted),
       last_reading_time_(Uptime::Now() - Hours(1)) {}
 
-void Ds3231Clock::begin() {}
-
 WallTime Ds3231Clock::now() const {
   Uptime now = Uptime::Now();
-  Interval delta = now - last_reading_time_;
+  Duration delta = now - last_reading_time_;
   if (delta < max_uptime_trusted_) {
     // Use delta for approximation, but round to seconds, since DS3231 only
     // has second accuracy.

@@ -9,13 +9,11 @@ namespace roo_time {
 class Ds3231Clock : public roo_time::WallTimeClock {
  public:
   Ds3231Clock(TimeZone tz = timezone::UTC,
-              Interval max_uptime_trusted = Seconds(10));
+              Duration max_uptime_trusted = Seconds(10));
 
   Ds3231Clock(TwoWire& wire,
               TimeZone tz = timezone::UTC,
-              Interval max_uptime_trusted = Seconds(10));
-
-  void begin();
+              Duration max_uptime_trusted = Seconds(10));
 
   // Returns the current time. Reads from the underlying hardware, and caches
   // the result for max_uptime_trusted_, using uptime reading to interpolate.
@@ -30,7 +28,7 @@ class Ds3231Clock : public roo_time::WallTimeClock {
  private:
   TwoWire& wire_;
   TimeZone tz_;
-  Interval max_uptime_trusted_;
+  Duration max_uptime_trusted_;
   mutable WallTime last_reading_;
   mutable Uptime last_reading_time_;
 };
