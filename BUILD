@@ -11,7 +11,7 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//lib/roo_time",
-        "//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/Wire",
+        "@roo_time",
+        "@roo_testing//roo_testing/frameworks/arduino-esp32-2.0.4/libraries/Wire",
     ],
 )
