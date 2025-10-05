@@ -13,9 +13,12 @@ void setup() {
 }
 
 void loop() {
+  // Read current time, and convert to DateTime in UTC.
   DateTime dt(rtc.now(), roo_time::timezone::UTC);
 
+  // Print it formatted.
   Serial.printf("%04d:%02d:%02d %02d:%02d:%02d\n", dt.year(), dt.month(),
                 dt.day(), dt.hour(), dt.minute(), dt.second());
+
   delay(1000);
 }
