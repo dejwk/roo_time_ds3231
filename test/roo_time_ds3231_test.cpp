@@ -2,7 +2,7 @@
 
 #include "gtest/gtest.h"
 #include "roo_testing/devices/clock/ds3231/ds3231.h"
-#include "roo_testing/devices/microcontroller/esp32/fake_esp32.h"
+#include "roo_testing/microcontrollers/esp32/fake_esp32.h"
 
 namespace roo_time {
 
