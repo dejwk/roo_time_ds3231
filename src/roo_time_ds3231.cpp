@@ -47,6 +47,7 @@ WallTime Ds3231Clock::now() const {
   uint8_t minute = Bcd2dec(wire_.read());
   uint8_t hour = Bcd2dec(wire_.read());
   uint8_t ignored_dayofweek = Bcd2dec(wire_.read());
+  (void)ignored_dayofweek;
   uint8_t day = Bcd2dec(wire_.read());
   uint8_t month = Bcd2dec(wire_.read());
   uint16_t year = Bcd2dec(wire_.read()) + 2000;
