@@ -1,28 +1,45 @@
 #pragma once
 
-#include "roo_time.h"
+/// Umbrella header for the roo_time_ds3231 module.
+///
+/// Provides DS3231-backed wall-time clock implementation.
 
 #include <Wire.h>
+
+#include "roo_time.h"
 namespace roo_time {
 
-// Clock implementation that uses a DS3231 device as a time source.
+/// Wall-time clock implementation backed by a DS3231 RTC.
 class Ds3231Clock : public roo_time::WallTimeClock {
  public:
+  /// Creates a clock using the default `Wire` bus.
+  ///
+  /// @param tz Time zone used for values returned by `now()` and expected by
+  ///     `set()`.
+  /// @param max_uptime_trusted Maximum uptime interval for which extrapolated
+  ///     time is trusted between RTC reads.
   Ds3231Clock(TimeZone tz = timezone::UTC,
               Duration max_uptime_trusted = Seconds(10));
 
-  Ds3231Clock(TwoWire& wire,
-              TimeZone tz = timezone::UTC,
+  /// Creates a clock using the specified I2C bus.
+  ///
+  /// @param wire I2C bus connected to the DS3231.
+  /// @param tz Time zone used for values returned by `now()` and expected by
+  ///     `set()`.
+  /// @param max_uptime_trusted Maximum uptime interval for which extrapolated
+  ///     time is trusted between RTC reads.
+  Ds3231Clock(TwoWire& wire, TimeZone tz = timezone::UTC,
               Duration max_uptime_trusted = Seconds(10));
 
-  // Returns the current time. Reads from the underlying hardware, and caches
-  // the result for max_uptime_trusted_, using uptime reading to interpolate.
-  // This way, the method can be called very frequently, and the overhead is low
-  // - it communicates over I2C only sporadically, to re-sync the clock.
+  /// Returns current wall time.
+  ///
+  /// Reads from hardware periodically and uses uptime-based interpolation
+  /// between reads to keep repeated calls inexpensive.
   WallTime now() const override;
 
-  // Sets the clock to the specified wall time. The time will be stored in the
-  // clock's timezone (specified during construction).
+  /// Sets RTC wall time in the clock's configured time zone.
+  ///
+  /// @param time New wall time value to store in the RTC.
   void set(WallTime time);
 
  private:
