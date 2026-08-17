@@ -8,5 +8,9 @@ or newer, a plain command defaults to that profile and prints a notice:
     bazel test ...
     bazel test ... --config=roo_testing_arduino_esp32
 
+The bundled sketch is a first-class runnable target (stop it with Ctrl-C):
+
+    bazel run //examples/simple:simple
+
 The files under .roo_testing/bazelrc/esp32 are vendored from roo_testing;
 follow their canonical-source headers when refreshing them.
