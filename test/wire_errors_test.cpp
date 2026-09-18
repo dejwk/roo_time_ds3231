@@ -1,6 +1,5 @@
-#include "roo_time_ds3231.h"
-
 #include "gtest/gtest.h"
+#include "roo_time_ds3231.h"
 
 TwoWire Wire;
 
@@ -9,7 +8,7 @@ namespace {
 WallTime ExpectedTime() {
   return DateTime(2024, 6, 15, 12, 34, 56, 0, timezone::UTC).wallTime();
 }
-} // namespace
+}  // namespace
 
 // Verifies success decodes a complete read and then uses the cached reading.
 TEST(WireErrors, SuccessfulReadAndCache) {
@@ -121,4 +120,78 @@ TEST(WireErrors, ShortWriteInvalidatesCache) {
     EXPECT_EQ(1, wire.requests);
   }
 }
-} // namespace roo_time
+
+// Verifies invalid BCD, ranges, reserved bits, and impossible dates are
+// rejected.
+TEST(DateValidation, InvalidReadingsAndRecovery) {
+  struct InvalidField {
+    size_t index;
+    int value;
+  };
+  const InvalidField invalid[] = {
+      {0, 0x0A}, {0, 0x60}, {0, 0x80}, {1, 0x1F}, {1, 0x60}, {1, 0x80},
+      {2, 0x24}, {2, 0x1A}, {2, 0x80}, {2, 0x40}, {2, 0x53}, {2, 0x6A},
+      {4, 0x00}, {4, 0x31}, {4, 0x32}, {4, 0x1A}, {4, 0x41}, {5, 0x00},
+      {5, 0x13}, {5, 0x1A}, {5, 0x26}, {5, 0x46}, {6, 0x1A}, {6, 0xA0}};
+  for (const InvalidField& field : invalid) {
+    SCOPED_TRACE(field.index);
+    SCOPED_TRACE(field.value);
+    TwoWire wire;
+    Ds3231Clock rtc(wire, timezone::UTC, Micros(0));
+    ASSERT_EQ(ExpectedTime(), rtc.now());
+    wire.received[field.index] = field.value;
+    EXPECT_FALSE(rtc.now().isSet());
+    wire.received = {0x56, 0x34, 0x12, 3, 0x15, 0x06, 0x24};
+    EXPECT_EQ(ExpectedTime(), rtc.now());
+  }
+}
+
+// Verifies Gregorian leap years, including the non-leap century 2100.
+TEST(DateValidation, CalendarBoundaries) {
+  struct Case {
+    int year;
+    int month;
+    int day;
+    bool valid;
+  };
+  const Case cases[] = {
+      {2000, 2, 29, true},  {2024, 2, 29, true}, {2023, 2, 29, false},
+      {2100, 2, 29, false}, {2104, 2, 29, true}, {2024, 2, 30, false},
+      {2024, 4, 31, false}, {2024, 4, 30, true}, {2099, 12, 31, true},
+      {2100, 1, 1, true},   {2199, 12, 31, true}};
+  for (const Case& c : cases) {
+    SCOPED_TRACE(c.year);
+    TwoWire wire;
+    wire.received[4] = (c.day / 10) * 16 + c.day % 10;
+    wire.received[5] =
+        ((c.month / 10) * 16 + c.month % 10) | (c.year >= 2100 ? 0x80 : 0);
+    wire.received[6] = ((c.year % 100) / 10) * 16 + c.year % 10;
+    Ds3231Clock rtc(wire, UtcOffset(Hours(2)));
+    const WallTime result = rtc.now();
+    EXPECT_EQ(c.valid, result.isSet());
+    if (c.valid) {
+      EXPECT_EQ(
+          DateTime(c.year, c.month, c.day, 12, 34, 56, 0, UtcOffset(Hours(2)))
+              .wallTime(),
+          result);
+    }
+  }
+}
+
+// Verifies every hour in both modes, particularly 12 AM and 12 PM.
+TEST(DateValidation, HourModes) {
+  for (int hour = 0; hour < 24; ++hour) {
+    for (bool twelve_hour : {false, true}) {
+      TwoWire wire;
+      const int displayed =
+          twelve_hour ? (hour % 12 == 0 ? 12 : hour % 12) : hour;
+      wire.received[2] = (displayed / 10) * 16 + displayed % 10;
+      if (twelve_hour) wire.received[2] |= 0x40 | (hour >= 12 ? 0x20 : 0);
+      Ds3231Clock rtc(wire);
+      EXPECT_EQ(
+          DateTime(2024, 6, 15, hour, 34, 56, 0, timezone::UTC).wallTime(),
+          rtc.now());
+    }
+  }
+}
+}  // namespace roo_time

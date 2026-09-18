@@ -29,3 +29,11 @@ successful transmission. On failure it returns `false` and invalidates the
 cached reading. A failed write may partially update the RTC; callers should retry
 the complete write when appropriate. Existing calls that ignore the return value
 still compile, but should check it to detect errors.
+
+RTC reads also reject invalid BCD digits, out-of-range time fields, reserved bits
+in date/time fields, and impossible Gregorian dates (including invalid leap days).
+Both 12-hour and 24-hour modes are decoded. The century bit selects 2000-2099
+(clear) or 2100-2199 (set). The weekday register is ignored; the date determines
+the weekday. Invalid readings return unset and are not cached.
+This checks the returned calendar data, not the oscillator-stop flag or clock
+synchronization status.

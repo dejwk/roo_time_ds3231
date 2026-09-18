@@ -11,7 +11,7 @@ namespace roo_time {
 
 /// Wall-time clock implementation backed by a DS3231 RTC.
 class Ds3231Clock : public roo_time::WallTimeClock {
-public:
+ public:
   /// Creates a clock using the default `Wire` bus.
   ///
   /// @param offset UTC offset used for values returned by `now()` and expected
@@ -39,7 +39,9 @@ public:
   /// between reads to keep repeated calls inexpensive. Returns
   /// WallTime::Unset() on a failed or incomplete Wire transaction. Failed reads
   /// are not cached; the next call retries. Cached reads do not probe bus
-  /// health.
+  /// health. Invalid BCD or calendar fields also return unset. Both hour modes
+  /// are decoded; the century bit selects 2000-2099 or 2100-2199. The weekday
+  /// register is ignored, and the oscillator-stop flag is not checked.
   WallTime now() const override;
 
   /// Sets RTC wall time in the clock's configured time zone.
@@ -49,7 +51,7 @@ public:
   /// Failure invalidates the cache; the RTC may have been partially updated.
   bool set(WallTime time);
 
-private:
+ private:
   TwoWire &wire_;
   UtcOffset offset_;
   Duration max_uptime_trusted_;
@@ -57,4 +59,4 @@ private:
   mutable Uptime last_reading_time_;
 };
 
-} // namespace roo_time
+}  // namespace roo_time

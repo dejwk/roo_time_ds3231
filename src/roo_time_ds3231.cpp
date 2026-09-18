@@ -17,6 +17,21 @@ enum Registers {
 uint8_t Dec2bcd(uint8_t v) { return ((v / 10) * 16) + (v % 10); }
 uint8_t Bcd2dec(uint8_t v) { return ((v / 16) * 10) + (v % 16); }
 
+// Checks BCD digits before conversion, then the field's inclusive range.
+bool DecodeBcd(uint8_t raw, uint8_t minimum, uint8_t maximum, uint8_t& value) {
+  if ((raw & 0x0F) > 9 || (raw >> 4) > 9) return false;
+  value = Bcd2dec(raw);
+  return value >= minimum && value <= maximum;
+}
+
+// Validates the Gregorian date without depending on newer roo_time APIs.
+bool ValidDate(uint16_t year, uint8_t month, uint8_t day) {
+  static constexpr uint8_t days[] = {31, 28, 31, 30, 31, 30,
+                                     31, 31, 30, 31, 30, 31};
+  const bool leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+  return day <= days[month - 1] + (month == 2 && leap);
+}
+
 }  // namespace
 
 Ds3231Clock::Ds3231Clock(UtcOffset offset, Duration max_uptime_trusted)
@@ -54,12 +69,26 @@ WallTime Ds3231Clock::now() const {
     if (received < 0) return WallTime::Unset();
     value = static_cast<uint8_t>(received);
   }
-  const uint8_t second = Bcd2dec(registers[0]);
-  const uint8_t minute = Bcd2dec(registers[1]);
-  const uint8_t hour = Bcd2dec(registers[2]);
-  const uint8_t day = Bcd2dec(registers[4]);
-  const uint8_t month = Bcd2dec(registers[5]);
-  const uint16_t year = Bcd2dec(registers[6]) + 2000;
+  uint8_t second, minute, hour, day, month, year_digits;
+  // Reserved bits must be zero; hour mode/PM and century bits are meaningful.
+  if ((registers[2] & 0x80) || (registers[4] & 0xC0) || (registers[5] & 0x60) ||
+      !DecodeBcd(registers[0], 0, 59, second) ||
+      !DecodeBcd(registers[1], 0, 59, minute) ||
+      !DecodeBcd(registers[4], 1, 31, day) ||
+      !DecodeBcd(registers[5] & 0x1F, 1, 12, month) ||
+      !DecodeBcd(registers[6], 0, 99, year_digits)) {
+    return WallTime::Unset();
+  }
+  if (registers[2] & 0x40) {
+    if (!DecodeBcd(registers[2] & 0x1F, 1, 12, hour)) {
+      return WallTime::Unset();
+    }
+    hour = hour % 12 + ((registers[2] & 0x20) ? 12 : 0);
+  } else if (!DecodeBcd(registers[2], 0, 23, hour)) {
+    return WallTime::Unset();
+  }
+  const uint16_t year = 2000 + ((registers[5] & 0x80) ? 100 : 0) + year_digits;
+  if (!ValidDate(year, month, day)) return WallTime::Unset();
 
   last_reading_ =
       DateTime(year, month, day, hour, minute, second, 0, offset_).wallTime();
