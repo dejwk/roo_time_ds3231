@@ -18,7 +18,7 @@ class Ds3231Clock : public roo_time::WallTimeClock {
   ///     `set()`.
   /// @param max_uptime_trusted Maximum uptime interval for which extrapolated
   ///     time is trusted between RTC reads.
-  Ds3231Clock(TimeZone tz = timezone::UTC,
+  Ds3231Clock(UtcOffset offset = timezone::UTC,
               Duration max_uptime_trusted = Seconds(10));
 
   /// Creates a clock using the specified I2C bus.
@@ -28,7 +28,7 @@ class Ds3231Clock : public roo_time::WallTimeClock {
   ///     `set()`.
   /// @param max_uptime_trusted Maximum uptime interval for which extrapolated
   ///     time is trusted between RTC reads.
-  Ds3231Clock(TwoWire& wire, TimeZone tz = timezone::UTC,
+  Ds3231Clock(TwoWire& wire, UtcOffset offset = timezone::UTC,
               Duration max_uptime_trusted = Seconds(10));
 
   /// Returns current wall time.
@@ -44,9 +44,9 @@ class Ds3231Clock : public roo_time::WallTimeClock {
 
  private:
   TwoWire& wire_;
-  TimeZone tz_;
+  UtcOffset offset_;
   Duration max_uptime_trusted_;
-  mutable WallTime last_reading_;
+  mutable WallTime last_reading_ = WallTime::Unset();
   mutable Uptime last_reading_time_;
 };
 
