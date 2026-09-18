@@ -34,3 +34,18 @@ cc_test(
         "@roo_testing//roo_testing/devices/clock/ds3231",
     ],
 )
+
+# Compile the production driver against a scripted Wire boundary for faults.
+cc_test(
+    name = "wire_errors_test",
+    size = "small",
+    srcs = [
+        "src/roo_time_ds3231.cpp",
+        "src/roo_time_ds3231.h",
+        "test/stubs/Wire.h",
+        "test/wire_errors_test.cpp",
+    ],
+    includes = ["test/stubs", "src"],
+    linkstatic = True,
+    deps = ["@roo_time", "@googletest//:gtest_main"],
+)

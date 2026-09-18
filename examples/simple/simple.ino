@@ -14,7 +14,13 @@ void setup() {
 
 void loop() {
   // Read current time, and convert to DateTime in UTC.
-  DateTime dt(rtc.now(), roo_time::timezone::UTC);
+  const WallTime now = rtc.now();
+  if (!now.isSet()) {
+    Serial.println("Unable to read RTC.");
+    delay(1000);
+    return;
+  }
+  DateTime dt(now, roo_time::timezone::UTC);
 
   // Print it formatted.
   Serial.printf("%04d:%02d:%02d %02d:%02d:%02d\n", dt.year(), dt.month(),

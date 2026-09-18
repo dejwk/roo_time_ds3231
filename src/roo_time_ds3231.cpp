@@ -38,19 +38,28 @@ WallTime Ds3231Clock::now() const {
     return last_reading_ + roo_time::Seconds(delta.inSeconds());
   }
 
+  last_reading_ = WallTime::Unset();
   wire_.beginTransmission(kDs3231Addr);
-  wire_.write(kRegTime);
-  wire_.endTransmission();
-  wire_.requestFrom((uint8_t)kDs3231Addr, (uint8_t)7);
+  const size_t written = wire_.write(kRegTime);
+  // Always finish the transmission, including when enqueueing failed.
+  const uint8_t status = wire_.endTransmission();
+  if (written != 1 || status != 0) return WallTime::Unset();
+  if (wire_.requestFrom(kDs3231Addr, static_cast<uint8_t>(7)) != 7) {
+    return WallTime::Unset();
+  }
 
-  uint8_t second = Bcd2dec(wire_.read());
-  uint8_t minute = Bcd2dec(wire_.read());
-  uint8_t hour = Bcd2dec(wire_.read());
-  uint8_t ignored_dayofweek = Bcd2dec(wire_.read());
-  (void)ignored_dayofweek;
-  uint8_t day = Bcd2dec(wire_.read());
-  uint8_t month = Bcd2dec(wire_.read());
-  uint16_t year = Bcd2dec(wire_.read()) + 2000;
+  uint8_t registers[7];
+  for (uint8_t& value : registers) {
+    const int received = wire_.read();
+    if (received < 0) return WallTime::Unset();
+    value = static_cast<uint8_t>(received);
+  }
+  const uint8_t second = Bcd2dec(registers[0]);
+  const uint8_t minute = Bcd2dec(registers[1]);
+  const uint8_t hour = Bcd2dec(registers[2]);
+  const uint8_t day = Bcd2dec(registers[4]);
+  const uint8_t month = Bcd2dec(registers[5]);
+  const uint16_t year = Bcd2dec(registers[6]) + 2000;
 
   last_reading_ =
       DateTime(year, month, day, hour, minute, second, 0, offset_).wallTime();
@@ -60,26 +69,28 @@ WallTime Ds3231Clock::now() const {
 
 // Sets the clock to the specified wall time. The time will be stored in the
 // clock's timezone (specified during construction). The time must not be unset.
-void Ds3231Clock::set(WallTime time) {
+bool Ds3231Clock::set(WallTime time) {
   assert(time.isSet());
   DateTime dt(time, offset_);
 
+  // A failed transaction may still have changed some RTC registers.
+  last_reading_ = WallTime::Unset();
+  const uint8_t registers[] = {kRegTime,
+                               Dec2bcd(dt.second()),
+                               Dec2bcd(dt.minute()),
+                               Dec2bcd(dt.hour()),
+                               Dec2bcd(dt.dayOfWeek()),
+                               Dec2bcd(dt.day()),
+                               Dec2bcd(dt.month()),
+                               Dec2bcd(dt.year() - 2000)};
   wire_.beginTransmission(kDs3231Addr);
-
-  wire_.write(kRegTime);
-
-  wire_.write(Dec2bcd(dt.second()));
-  wire_.write(Dec2bcd(dt.minute()));
-  wire_.write(Dec2bcd(dt.hour()));
-  wire_.write(Dec2bcd(dt.dayOfWeek()));
-  wire_.write(Dec2bcd(dt.day()));
-  wire_.write(Dec2bcd(dt.month()));
-  wire_.write(Dec2bcd(dt.year() - 2000));
-
-  wire_.endTransmission();
+  const size_t written = wire_.write(registers, sizeof(registers));
+  const uint8_t status = wire_.endTransmission();
+  if (written != sizeof(registers) || status != 0) return false;
 
   last_reading_ = time;
   last_reading_time_ = Uptime::Now();
+  return true;
 }
 
 }  // namespace roo_time
