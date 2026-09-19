@@ -1,3 +1,12 @@
+# roo_time_ds3231 2.0.0
+
+- Add native ESP-IDF support through `roo_io` I2C, preserving existing Arduino constructor calls. ESP-IDF requires bus setup and `clock.init()` before use.
+- Add an ESP-IDF example and tests for initialization, read/write operations, error recovery, and cache invalidation.
+- Upgrade dependencies to `roo_time` 2.0.0, `roo_io` 2.3.0, and `roo_testing` 2.1.2; refresh Bazel and CI dependencies.
+- Resolve build warnings and expand setup documentation.
+
+---
+
 # [roo_time_ds3231 1.1.9](https://github.com/dejwk/roo_time_ds3231/releases/tag/1.1.9)
 
 Published 2026-09-18.
