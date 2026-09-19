@@ -4,15 +4,14 @@
 ///
 /// Provides DS3231-backed wall-time clock implementation.
 
-#include <Wire.h>
-
+#include "roo_io/i2c/i2c.h"
 #include "roo_time.h"
 namespace roo_time {
 
 /// Wall-time clock implementation backed by a DS3231 RTC.
 class Ds3231Clock : public roo_time::WallTimeClock {
  public:
-  /// Creates a clock using the default `Wire` bus.
+  /// Creates a clock using default `Wire` (Arduino) or I2C port 0 (ESP-IDF).
   ///
   /// @param offset UTC offset used for values returned by `now()` and expected
   /// by
@@ -24,20 +23,26 @@ class Ds3231Clock : public roo_time::WallTimeClock {
 
   /// Creates a clock using the specified I2C bus.
   ///
-  /// @param wire I2C bus connected to the DS3231.
+  /// @param bus I2C bus connected to the DS3231; accepts TwoWire& on Arduino.
+  /// The application initializes the bus before use.
   /// @param offset UTC offset used for values returned by `now()` and expected
   /// by
   ///     `set()`.
   /// @param max_uptime_trusted Maximum uptime interval for which extrapolated
   ///     time is trusted between RTC reads.
-  Ds3231Clock(TwoWire &wire, UtcOffset offset = timezone::UTC,
+  Ds3231Clock(roo_io::I2cMasterBusHandle bus, UtcOffset offset = timezone::UTC,
               Duration max_uptime_trusted = Seconds(10));
+
+  /// Registers the device on an already initialized bus. Required on ESP-IDF;
+  /// optional on Arduino. Idempotent; false permits retry after a setup
+  /// failure.
+  bool init();
 
   /// Returns current wall time.
   ///
   /// Reads from hardware periodically and uses uptime-based interpolation
   /// between reads to keep repeated calls inexpensive. Returns
-  /// WallTime::Unset() on a failed or incomplete Wire transaction. Failed reads
+  /// WallTime::Unset() on a failed or incomplete I2C transaction. Failed reads
   /// are not cached; the next call retries. Cached reads do not probe bus
   /// health. Invalid BCD or calendar fields also return unset. Both hour modes
   /// are decoded; the century bit selects 2000-2099 or 2100-2199. The weekday
@@ -52,7 +57,7 @@ class Ds3231Clock : public roo_time::WallTimeClock {
   bool set(WallTime time);
 
  private:
-  TwoWire &wire_;
+  roo_io::I2cSlaveDevice device_;
   UtcOffset offset_;
   Duration max_uptime_trusted_;
   mutable WallTime last_reading_ = WallTime::Unset();

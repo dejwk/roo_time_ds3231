@@ -17,6 +17,7 @@ TEST(WireErrors, SuccessfulReadAndCache) {
   EXPECT_EQ(ExpectedTime(), rtc.now());
   EXPECT_EQ(0x68, wire.last_address);
   EXPECT_EQ(7, wire.requested);
+  EXPECT_FALSE(wire.last_stop);
   EXPECT_EQ((std::vector<uint8_t>{0}), wire.sent);
   wire.status = 2;
   EXPECT_TRUE(rtc.now().isSet());
@@ -46,6 +47,7 @@ TEST(WireErrors, RegisterAddressEnqueueFailure) {
   wire.write_limit = 0;
   EXPECT_FALSE(rtc.now().isSet());
   EXPECT_EQ(1, wire.ends);
+  EXPECT_TRUE(wire.last_stop);
   EXPECT_EQ(0, wire.requests);
   wire.write_limit = 8;
   EXPECT_EQ(ExpectedTime(), rtc.now());
@@ -186,7 +188,9 @@ TEST(DateValidation, HourModes) {
       const int displayed =
           twelve_hour ? (hour % 12 == 0 ? 12 : hour % 12) : hour;
       wire.received[2] = (displayed / 10) * 16 + displayed % 10;
-      if (twelve_hour) wire.received[2] |= 0x40 | (hour >= 12 ? 0x20 : 0);
+      if (twelve_hour) {
+        wire.received[2] |= 0x40 | (hour >= 12 ? 0x20 : 0);
+      }
       Ds3231Clock rtc(wire);
       EXPECT_EQ(
           DateTime(2024, 6, 15, hour, 34, 56, 0, timezone::UTC).wallTime(),

@@ -4,6 +4,7 @@ common --registry="https://raw.githubusercontent.com/dejwk/roo-registry/main/" -
 import %workspace%/.roo_testing/bazelrc/common/asan.bazelrc
 import %workspace%/.roo_testing/bazelrc/esp32/base.bazelrc
 import %workspace%/.roo_testing/bazelrc/esp32/arduino.bazelrc
+import %workspace%/.roo_testing/bazelrc/esp32/idf.bazelrc
 
 # Bazelisk defaults configured commands to Arduino unless a frontend is selected.
 

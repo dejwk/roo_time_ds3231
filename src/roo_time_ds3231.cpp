@@ -19,7 +19,9 @@ uint8_t Bcd2dec(uint8_t v) { return ((v / 16) * 10) + (v % 16); }
 
 // Checks BCD digits before conversion, then the field's inclusive range.
 bool DecodeBcd(uint8_t raw, uint8_t minimum, uint8_t maximum, uint8_t& value) {
-  if ((raw & 0x0F) > 9 || (raw >> 4) > 9) return false;
+  if ((raw & 0x0F) > 9 || (raw >> 4) > 9) {
+    return false;
+  }
   value = Bcd2dec(raw);
   return value >= minimum && value <= maximum;
 }
@@ -35,14 +37,16 @@ bool ValidDate(uint16_t year, uint8_t month, uint8_t day) {
 }  // namespace
 
 Ds3231Clock::Ds3231Clock(UtcOffset offset, Duration max_uptime_trusted)
-    : Ds3231Clock(Wire, offset, max_uptime_trusted) {}
+    : Ds3231Clock(roo_io::I2cMasterBusHandle(), offset, max_uptime_trusted) {}
 
-Ds3231Clock::Ds3231Clock(TwoWire& wire, UtcOffset offset,
+Ds3231Clock::Ds3231Clock(roo_io::I2cMasterBusHandle bus, UtcOffset offset,
                          Duration max_uptime_trusted)
-    : wire_(wire),
+    : device_(bus, kDs3231Addr),
       offset_(offset),
       max_uptime_trusted_(max_uptime_trusted),
       last_reading_time_(Uptime::Now() - Hours(1)) {}
+
+bool Ds3231Clock::init() { return device_.init(); }
 
 WallTime Ds3231Clock::now() const {
   Uptime now = Uptime::Now();
@@ -54,41 +58,35 @@ WallTime Ds3231Clock::now() const {
   }
 
   last_reading_ = WallTime::Unset();
-  wire_.beginTransmission(kDs3231Addr);
-  const size_t written = wire_.write(kRegTime);
-  // Always finish the transmission, including when enqueueing failed.
-  const uint8_t status = wire_.endTransmission();
-  if (written != 1 || status != 0) return WallTime::Unset();
-  if (wire_.requestFrom(kDs3231Addr, static_cast<uint8_t>(7)) != 7) {
-    return WallTime::Unset();
-  }
-
+  const roo::byte reg = static_cast<roo::byte>(kRegTime);
   uint8_t registers[7];
-  for (uint8_t& value : registers) {
-    const int received = wire_.read();
-    if (received < 0) return WallTime::Unset();
-    value = static_cast<uint8_t>(received);
+  if (!device_.transmitReceive(&reg, 1, reinterpret_cast<roo::byte*>(registers),
+                               sizeof(registers))) {
+    return WallTime::Unset();
   }
   uint8_t second, minute, hour, day, month, year_digits;
   // Reserved bits must be zero; hour mode/PM and century bits are meaningful.
-  if ((registers[2] & 0x80) || (registers[4] & 0xC0) || (registers[5] & 0x60) ||
-      !DecodeBcd(registers[0], 0, 59, second) ||
+  if ((registers[2] & 0x80) != 0 || (registers[4] & 0xC0) != 0 ||
+      (registers[5] & 0x60) != 0 || !DecodeBcd(registers[0], 0, 59, second) ||
       !DecodeBcd(registers[1], 0, 59, minute) ||
       !DecodeBcd(registers[4], 1, 31, day) ||
       !DecodeBcd(registers[5] & 0x1F, 1, 12, month) ||
       !DecodeBcd(registers[6], 0, 99, year_digits)) {
     return WallTime::Unset();
   }
-  if (registers[2] & 0x40) {
+  if ((registers[2] & 0x40) != 0) {
     if (!DecodeBcd(registers[2] & 0x1F, 1, 12, hour)) {
       return WallTime::Unset();
     }
-    hour = hour % 12 + ((registers[2] & 0x20) ? 12 : 0);
+    hour = hour % 12 + ((registers[2] & 0x20) != 0 ? 12 : 0);
   } else if (!DecodeBcd(registers[2], 0, 23, hour)) {
     return WallTime::Unset();
   }
-  const uint16_t year = 2000 + ((registers[5] & 0x80) ? 100 : 0) + year_digits;
-  if (!ValidDate(year, month, day)) return WallTime::Unset();
+  const uint16_t year =
+      2000 + ((registers[5] & 0x80) != 0 ? 100 : 0) + year_digits;
+  if (!ValidDate(year, month, day)) {
+    return WallTime::Unset();
+  }
 
   last_reading_ =
       DateTime(year, month, day, hour, minute, second, 0, offset_).wallTime();
@@ -112,10 +110,10 @@ bool Ds3231Clock::set(WallTime time) {
                                Dec2bcd(dt.day()),
                                Dec2bcd(dt.month()),
                                Dec2bcd(dt.year() - 2000)};
-  wire_.beginTransmission(kDs3231Addr);
-  const size_t written = wire_.write(registers, sizeof(registers));
-  const uint8_t status = wire_.endTransmission();
-  if (written != sizeof(registers) || status != 0) return false;
+  if (!device_.transmit(reinterpret_cast<const roo::byte*>(registers),
+                        sizeof(registers))) {
+    return false;
+  }
 
   last_reading_ = time;
   last_reading_time_ = Uptime::Now();
