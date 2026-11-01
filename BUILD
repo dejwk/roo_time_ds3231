@@ -15,7 +15,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@roo_io//:i2c",
-        "@roo_rtc//:i2c",
+        "@roo_rtc//:ds3231",
         "@roo_time",
     ],
 )
