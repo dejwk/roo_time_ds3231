@@ -1,82 +1,76 @@
-See [roo_time](http://github.com/dejwk/roo_time).
+# roo_time_ds3231
 
-## Host emulation
+Compatibility wrapper for the DS3231 driver maintained in
+[roo_rtc](https://github.com/dejwk/roo_rtc). Existing code can keep including
+`roo_time_ds3231.h` and using `roo_time::Ds3231Clock`; that name now aliases
+`roo_rtc::Ds3231Clock`. New applications can use `roo_rtc/ds3231.h` directly.
 
-Host builds support Arduino and native ESP-IDF ESP32 profiles. With Bazelisk 1.21
-or newer, a plain command defaults to that profile and prints a notice:
+The existing default, fixed-offset, and `roo_io::I2cMasterBusHandle` constructors
+remain available, including implicit `TwoWire&` on Arduino. `init()`, `now()`,
+and `bool set(WallTime)` remain source-compatible. This is not binary compatibility.
 
-    bazel test ...
-    bazel test ... --config=asan
-    bazel test ... --config=roo_testing_arduino_esp32
+## Behavior changes
 
-The bundled sketch is a first-class runnable target (stop it with Ctrl-C):
+- Fresh reads check oscillator-stop flags and return `WallTime::Unset()` when
+  hardware indicates time loss. Set time from a trusted reference to recover.
+- Reads and writes support years 2000–2099. The prior reader's century-bit
+  interpretation is intentionally restricted to the hardware's documented
+  leap-year compensation range; unsupported writes fail before hardware access.
+- `set()` invalidates the cache on success and failure. The next `now()` reads
+  hardware rather than returning a directly cached, potentially fractional value.
+- DS weekday writes use the conventional Sunday=1 through Saturday=7 encoding.
+- Fresh status is available through `read()`; `invalidateCache()` forces the next
+  `now()` to access hardware.
 
-    bazel run //examples/simple
+Transactions are checked for full completion. Invalid BCD, field bounds, and
+impossible Gregorian dates return unset; 12/24-hour reads are supported and the
+weekday register is ignored on reads. Failed writes can partially update hardware.
+Failed reads are not cached; the next call retries. Successful readings may be
+extrapolated for `max_uptime_trusted`; cached calls do not check bus health or
+oscillator-stop flags. Clock instances require external serialization.
 
-The files under .roo_testing/bazelrc/esp32 are vendored from roo_testing;
-follow their canonical-source headers when refreshing them.
+Store UTC by default; fixed offsets remain available for compatibility. Apply
+local timezone and DST conversion outside the RTC driver.
 
-## I2C errors
+## Bus setup
 
-On Arduino, call `Wire.begin(...)` before using the clock; existing default and
-`TwoWire&` constructor calls continue to work. On ESP-IDF, initialize the bus and
-call `clock.init()` before reading or setting the clock (see below). `now()` returns
-`WallTime::Unset()` when a required I2C transaction fails or returns incomplete
-data. Check `isSet()` before converting to `DateTime`. Successful readings may
-be extrapolated for `max_uptime_trusted`; cached reads do not check bus health.
-Failed reads are not cached, so the next call retries.
-
-`set(time)` returns `true` only when all bytes are transferred successfully. On failure it returns `false` and invalidates the
-cached reading. A failed write may partially update the RTC; callers should retry
-the complete write when appropriate. Existing calls that ignore the return value
-still compile, but should check it to detect errors.
-
-RTC reads also reject invalid BCD digits, out-of-range time fields, reserved bits
-in date/time fields, and impossible Gregorian dates (including invalid leap days).
-Both 12-hour and 24-hour modes are decoded. The century bit selects 2000-2099
-(clear) or 2100-2199 (set). The weekday register is ignored; the date determines
-the weekday. Invalid readings return unset and are not cached.
-This checks the returned calendar data, not the oscillator-stop flag or clock
-synchronization status.
-
-## Native ESP-IDF
-
-The driver uses `roo_io/i2c/i2c.h`; no Arduino headers or Wire library are needed
-in a native IDF build. Bus setup belongs to the application:
+On Arduino, initialize Wire before use; the driver accepts the default Wire or
+an explicitly supplied instance. `init()` is optional for Arduino I²C, but call
+it for consistent setup/error handling. On native ESP-IDF, initialize the bus and
+call the clock's `init()` before reading or setting time:
 
 ```cpp
 roo_io::I2cMasterBusHandle bus;
 if (!bus.init(18, 19, 100000)) return;
 roo_time::Ds3231Clock clock(bus);
 if (!clock.init()) return;
-auto time = clock.now();
-if (!time.isSet()) return;
+const roo_rtc::ReadResult result = clock.read();
+if (result.status != roo_rtc::ReadStatus::kOk) return;
 ```
 
-Keep the clock alive for as long as it is needed. Bus copies and devices retain
-an owned bus until the last reference is destroyed. To reuse an existing IDF bus,
-construct `roo_io::I2cMasterBusHandle(native_handle)` and keep the external bus
-alive until the clock is destroyed. `clock.init()` is idempotent and can be
-retried after a setup failure. Transfers before successful initialization fail.
+Copies of an owned native bus retain it until the last reference is destroyed.
+Externally supplied native buses and Arduino Wire instances must outlive the
+clock. `init()` is idempotent and retryable. Native IDF uses modern
+`driver/i2c_master.h`; include `esp_driver_i2c` in firmware component dependencies
+and compile the roo_rtc, roo_io I²C, and roo_time sources without `ARDUINO`.
 
-The native adapter uses IDF's modern `driver/i2c_master.h` API (including
-`i2c_master_get_bus_handle`), not the legacy I2C driver. Include IDF's
-`esp_driver_i2c` component in the firmware build, and compile the native
-`roo_io` I2C implementation alongside `roo_time` and this library. Do not define
-`ARDUINO` in that build.
-
-Host checks:
+## Host checks
 
 ```sh
-bazel test --config=roo_testing_idf_esp32 //:roo_time_ds3231_test //:idf_clock_test
-bazel run --config=roo_testing_idf_esp32 //examples/espidf/simple:simple
+bazel test //... \
+  --override_module=roo_rtc=../roo_rtc \
+  --override_module=roo_io=../roo_io \
+  --override_module=roo_time=../roo_time \
+  --override_module=roo_testing=../roo_testing
+bazel test --config=roo_testing_idf_esp32 //... \
+  --override_module=roo_rtc=../roo_rtc \
+  --override_module=roo_io=../roo_io \
+  --override_module=roo_time=../roo_time \
+  --override_module=roo_testing=../roo_testing
 ```
 
-Stop the host example with Ctrl-C after its status message.
-
-The integration test and example use roo_testing's pin-routed DS3231 emulator
-through the modern IDF I2C master API. Separate scripted-boundary tests check
-initialization failures and cache invalidation. These checks do not establish
-electrical behavior on hardware. Until the dependencies are released, pass local
-`--override_module` flags for `roo_io`, `roo_time`, and `roo_testing` when running
-from this repository; dependency-module overrides are not inherited by Bazel.
+Transport and calendar fault tests now live in roo_rtc. This wrapper retains
+source compatibility tests, native API-boundary error tests, and an emulator
+integration test. Host checks establish software behavior, not electrical behavior.
+Runnable examples remain at `//examples/simple` and
+`//examples/espidf/simple:simple`; stop a looping host example with Ctrl-C.

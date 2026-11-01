@@ -124,3 +124,10 @@ Initial release.
 
 ---
 
+
+## Unreleased
+
+Delegate DS3231 implementation to roo_rtc while preserving source constructors
+and the legacy include/type. Adds oscillator-stop checks and explicit fresh-read
+status/cache control. Supported calendar range is now 2000–2099, and set() always
+invalidates the cache. Transport/calendar fault coverage moved to roo_rtc.

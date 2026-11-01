@@ -15,6 +15,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@roo_io//:i2c",
+        "@roo_rtc//:i2c",
         "@roo_time",
     ],
 )
@@ -34,31 +35,27 @@ cc_test(
     }),
 )
 
-# Compile the production driver against a scripted Wire boundary for faults.
+# Transport/calendar fault coverage now lives in roo_rtc's rtc_test.
 cc_test(
     name = "wire_errors_test",
     size = "small",
-    target_compatible_with = ["@roo_testing//roo_testing/platforms:arduino"],
-    srcs = [
-        "src/roo_time_ds3231.cpp",
-        "src/roo_time_ds3231.h",
-        "test/stubs/Wire.h",
-        "@roo_io//:arduino_i2c_sources",
-        "test/wire_errors_test.cpp",
-    ],
-    includes = ["test/stubs", "src"],
+    srcs = ["test/wire_errors_test.cpp"],
     linkstatic = True,
-    deps = ["@roo_io//:i2c_headers", "@roo_time", "@googletest//:gtest_main"],
+    target_compatible_with = ["@roo_testing//roo_testing/platforms:arduino"],
+    deps = [
+        ":roo_time_ds3231",
+        "@googletest//:gtest_main",
+    ],
 )
 
 cc_test(
     name = "idf_clock_test",
     size = "small",
-    linkstatic = True,
     srcs = ["test/idf_clock_test.cpp"],
+    linkstatic = True,
     deps = [
         ":roo_time_ds3231",
-        "@roo_io//test/i2c:idf_fake",
         "@googletest//:gtest_main",
+        "@roo_io//test/i2c:idf_fake",
     ],
 )

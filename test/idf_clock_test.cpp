@@ -21,11 +21,10 @@ TEST(IdfClock, InitializationReadWriteAndRecovery) {
   EXPECT_TRUE(rtc.init());
   EXPECT_EQ(expected, rtc.now());
   EXPECT_EQ(0x68, i2c_test::state().address);
-  EXPECT_EQ((std::vector<uint8_t>{0}), i2c_test::state().sent);
-  EXPECT_EQ(1, i2c_test::state().combined);
+  EXPECT_EQ((std::vector<uint8_t>{0x0f}), i2c_test::state().sent);
+  EXPECT_EQ(5, i2c_test::state().combined);
   ASSERT_TRUE(rtc.set(expected));
-  EXPECT_EQ((std::vector<uint8_t>{0, 0x56, 0x34, 0x12, 6, 0x15, 0x06, 0x24}),
-            i2c_test::state().sent);
+  EXPECT_EQ((std::vector<uint8_t>{0x0f, 0x57}), i2c_test::state().sent);
   i2c_test::state().transfer_result = ESP_ERR_TIMEOUT;
   EXPECT_FALSE(rtc.now().isSet());
   EXPECT_FALSE(rtc.set(expected));

@@ -1,6 +1,6 @@
 {
     "name": "roo_time_ds3231",
-    "description": "Arduino driver for DS3231 real-time clock, compliant with roo_time.",
+    "description": "Compatibility wrapper for the roo_rtc DS3231 driver.",
     "authors": [
         {
             "name": "Dejwk",
@@ -27,6 +27,7 @@
     ],
     "dependencies": {
         "dejwk/roo_time": ">=2.0.0",
-        "dejwk/roo_io": ">=2.3.0"
+        "dejwk/roo_io": ">=2.3.0",
+        "dejwk/roo_rtc": ">=0.1.0"
     }
 }
