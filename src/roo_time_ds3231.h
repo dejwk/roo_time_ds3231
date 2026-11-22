@@ -4,6 +4,7 @@
 /// Existing constructors and WallTimeClock usage remain source-compatible.
 /// See roo_rtc for fresh-read status, cache control, and stricter time
 /// validity.
+#include "roo_rtc.h"
 #include "roo_rtc/ds3231.h"
 
 namespace roo_time {
