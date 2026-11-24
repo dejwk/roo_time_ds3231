@@ -1,9 +1,12 @@
 # roo_time_ds3231
 
-Compatibility wrapper for the DS3231 driver maintained in
-[roo_rtc](https://github.com/dejwk/roo_rtc). Existing code can keep including
-`roo_time_ds3231.h` and using `roo_time::Ds3231Clock`; that name now aliases
-`roo_rtc::Ds3231Clock`. New applications can use `roo_rtc/ds3231.h` directly.
+**Deprecated.** The DS3231 driver is maintained in
+[`roo_rtc`](https://github.com/dejwk/roo_rtc).
+
+To migrate, replace the `roo_time_ds3231` dependency with `roo_rtc` (use
+`@roo_rtc//:ds3231` in Bazel), include `roo_rtc/ds3231.h`, and use
+`roo_rtc::Ds3231Clock`. The compatibility wrapper still provides
+`roo_time_ds3231.h` and `roo_time::Ds3231Clock` for existing applications.
 
 The existing default, fixed-offset, and `roo_io::I2cMasterBusHandle` constructors
 remain available, including implicit `TwoWire&` on Arduino. `init()`, `now()`,

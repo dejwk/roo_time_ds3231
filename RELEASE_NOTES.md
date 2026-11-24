@@ -1,3 +1,13 @@
+# roo_time_ds3231 3.0.0
+
+- Use `roo_rtc` for the DS3231 driver while preserving source compatibility for `roo_time_ds3231.h`, `roo_time::Ds3231Clock`, and existing constructors. Arduino builds now discover `roo_rtc` automatically.
+- Fresh reads check the oscillator-stop flag and return `WallTime::Unset()` if it indicates time loss. Use `read()` for fresh-read status and `invalidateCache()` to force the next `now()` to read the hardware.
+- Reads and writes now support years 2000–2099. `set()` rejects out-of-range dates before accessing hardware and invalidates the cache on every call. Weekday writes use Sunday = 1 through Saturday = 7.
+- Move transport and calendar fault tests to `roo_rtc` and retain wrapper compatibility, native error handling, and emulator integration tests.
+- Update dependencies to `roo_rtc` 1.0.0, `roo_time` 2.2.1, and `roo_io` 2.5.0. Update Bazel tests to `roo_testing` 2.7.1 and CI to the `roo_testing` 2.7.0 workflow with the `arduino_esp32` profile. The Bazel launcher now selects ESP-IDF automatically for ESP-IDF examples.
+
+---
+
 # roo_time_ds3231 2.0.0
 
 - Add native ESP-IDF support through `roo_io` I2C, preserving existing Arduino constructor calls. ESP-IDF requires bus setup and `clock.init()` before use.

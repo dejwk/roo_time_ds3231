@@ -15,7 +15,8 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "@roo_io//:i2c",
-        "@roo_rtc//:ds3231",
+        # The wrapper includes roo_rtc.h for Arduino library discovery.
+        "@roo_rtc",
         "@roo_time",
     ],
 )

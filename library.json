@@ -12,7 +12,7 @@
         "type": "git",
         "url": "https://github.com/dejwk/roo_time_ds3231"
     },
-    "version": "2.0.0",
+    "version": "3.0.0",
     "homepage": "https://github.com/dejwk/roo_time_ds3231",
     "frameworks": [
         "Arduino",
@@ -26,8 +26,8 @@
         "examples/*/*.ino"
     ],
     "dependencies": {
-        "dejwk/roo_time": ">=2.0.0",
-        "dejwk/roo_io": ">=2.3.0",
-        "dejwk/roo_rtc": ">=0.1.0"
+        "dejwk/roo_time": ">=2.2.1",
+        "dejwk/roo_io": ">=2.5.0",
+        "dejwk/roo_rtc": ">=1.0.0"
     }
 }
